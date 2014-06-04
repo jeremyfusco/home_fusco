@@ -1,0 +1,13 @@
+! terminal colors ------------------------------------------------------------
+
+xterm*termName: xterm-256color
+! Ensure all input data is interpreted as UTF-8
+XTerm*locale: true
+Xterm*saveLines: 20000
+xterm*VT00.geometry: 120x50
+xterm*toolBar: false
+xterm*ReverseVideo: on
+
+! What would normally be set to DarkBlue + Blue
+*color4:  grey
+*color12:  darkgrey

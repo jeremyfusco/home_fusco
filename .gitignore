@@ -1,0 +1,8 @@
+.Xauthority
+.bash_history
+.lesshst
+.viminfo
+.config/
+.cpan/
+.ssh/
+src

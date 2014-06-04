@@ -1,0 +1,108 @@
+#!/bin/bash
+#
+# Jeremy Fusco 2014 - bootstrap and perpetuate an ssh-agent environment.
+#
+# Some notes regarding this script.
+# . Errors are caught and echo'd to the terminal.
+# . When this function runs, it instantiates it's own ssh agent
+#   Based on the file stored in '$FILELIST[SSH_AGENT]'.
+#   No effort is made to inspect the current shell environment other then running
+#   ssh-add -l.  This has the benefit of not interfering with current agents.
+#   Allowing for discrete agent sessions.
+#
+# Globals
+#   TMP_RETURNED   used in main scope body to catch $?.
+#   SSH_ADD_RETURN Used in main scope to catch $? for ssh case
+#   MIN_BASH       Minimum version of bash we need.
+#   FILE_LIST      Files we require to run.
+# Functions
+#   start_new_ssh_agent  Starts a new ssh_agent and writes the env to ${FILELIST[SSH_AGENT]}
+
+
+echo date >> /tmp/load_ssh_func.log
+
+####################################
+####################################
+# bash 4 for associative arrays.
+MIN_BASH=4;
+if [ "${BASH_VERSINFO[0]}" -lt "$MIN_BASH" ] ; then
+    echo Major version of bash not met. Required ${MIN_BASH}. Current version ${BASH_VERSINFO[0]}.
+    return 1
+fi
+
+####################################
+####################################
+# Files we'll be working with.
+declare -A FILELIST
+
+FILELIST[ID_RSA]="${HOME}/.ssh/id_rsa";
+FILELIST[SSH_AGENT]="${HOME}/.ssh/ssh_agent.env";
+
+####################################
+####################################
+# Binaries we need, return if not found.
+for binary in ssh-agent ssh-add;  do
+    if [ ! -e "`which $binary`" ] ; then
+        echo Can not find binary $binary;
+        return 1;
+    fi
+done
+
+# FUNCTION #########################
+####################################
+# if ssh_agent.env doesn't exist populate it with a new instance of ssh-agent
+# Warning: Ensure that your umask does not allow group or other write privilages.
+start_new_ssh_agent()
+{
+    ssh-agent > ${FILELIST[SSH_AGENT]} 2>&1
+    local TMP_RETURNED=$?
+    if [ $TMP_RETURNED -ne 0 ] ; then
+        echo "Error instantiating a new instance of ssh-agent. Got $RETURNED from ssh-agent.";
+        return $RETURNED;
+    fi
+
+   return $TMP_RETURNED;
+}
+
+####################################
+####################################
+# Check for an existing environment, if not found instantiate a new ssh-agent
+if [ ! -e ${FILELIST[SSH_AGENT]} ] ; then
+    TMP_RETURNED=$(start_new_ssh_agent);
+
+    if [ $TMP_RETURNED -ne 0 ] ; then
+        return $TMP_RETURNED;
+    fi
+fi
+
+####################################
+####################################
+# We should either have an old ssh_agent file or one just created, source it and find out.
+# This code path will be run most of the time.
+source ${FILELIST[SSH_AGENT]};
+
+# Verify key, load a key if there aren't any.
+declare -A ssh_add_error_codes;
+ssh_add_error_codes[1]='The agent has no identities.';
+ssh_add_error_codes[2]='Could not open a connection to your authentication agent.';
+
+# Check for the existence of a key.
+ssh-add -l
+SSH_ADD_RETURN=$?
+
+# return if we have a key, Show that key has no identies or load a new ssh-agent.
+case $SSH_ADD_RETURN in
+    0) return 0
+       ;;
+    2) echo Starting a new ssh-agent.
+       $(start_new_ssh_agent);
+       TMP_RETURNED=$?
+       if [ $TMP_RETURNED -ne 0 ] ; then
+           return $TMP_RETURNED;
+       fi
+       source ${FILELIST[SSH_AGENT]};
+       ;;
+esac
+
+ssh-add ${FILELIST[ID_RSA]};
+

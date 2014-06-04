@@ -1,0 +1,7 @@
+[core]
+	ignorecase = false
+[user]
+	name = Jeremy Fusco
+	email = jeremy.fusco@footclan.org
+[color]
+	ui = true

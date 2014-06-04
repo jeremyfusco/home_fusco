@@ -1,0 +1,26 @@
+pathadd () {
+	NEW_PATH=$1; 
+	AFTER=$2; # Place path entry
+
+	# Trim all trailing '/'. Native bash, no external calls.	
+        while [[ "$NEW_PATH" =~ /$ ]] ; do
+            NEW_PATH=${NEW_PATH%/};
+        done
+
+	if [ -z $NEW_PATH   ] || 
+           [ ! -d $NEW_PATH ] ; 
+        then
+	    echo "New Path >>'$NEW_PATH'<< not defined or directory doesn't exist";
+            return 1;
+        fi
+
+	if [[ "$PATH" =~ (^|:)"${NEW_PATH}"(:|$) ]]; then
+	    return 0;
+	fi
+
+        if [ "$AFTER" = "after" ] ; then
+            PATH=$PATH:$1
+        else
+            PATH=$1:$PATH
+        fi
+}
